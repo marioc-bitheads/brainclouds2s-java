@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -150,6 +151,14 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
+            if (! jsonData.has("data") ) {
+                fail("Missing data in return");
+            }
+            if (! jsonData.getJSONObject("data").has("entityList") ) {
+                fail("Missing entityList in return");
+            }
+            JSONArray list = jsonData.getJSONObject("data").getJSONArray("entityList");
+
             System.err.println(jsonData.toString());
         });
     }
