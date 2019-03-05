@@ -159,7 +159,7 @@ public class Brainclouds2sClientTest {
             }
             JSONArray list = jsonData.getJSONObject("data").getJSONArray("entityList");
 
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -189,7 +189,7 @@ public class Brainclouds2sClientTest {
                     }
                 }
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -216,7 +216,7 @@ public class Brainclouds2sClientTest {
                     }
                 }
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -241,7 +241,7 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -271,7 +271,7 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -294,7 +294,7 @@ public class Brainclouds2sClientTest {
             if (200 != jsonData.getInt("status")) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 }
