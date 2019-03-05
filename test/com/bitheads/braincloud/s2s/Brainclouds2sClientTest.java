@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -99,7 +100,7 @@ public class Brainclouds2sClientTest {
 
     @BeforeClass
     public static void setUpClass() {
-        
+
         LoadIds();
         _s2sClient = new Brainclouds2s();
         _s2sClient.init(m_appId, m_serverName, m_serverSecret);
@@ -150,7 +151,15 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            if (!jsonData.has("data")) {
+                fail("Missing data in return");
+            }
+            if (!jsonData.getJSONObject("data").has("entityList")) {
+                fail("Missing entityList in return");
+            }
+            JSONArray list = jsonData.getJSONObject("data").getJSONArray("entityList");
+
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -180,7 +189,34 @@ public class Brainclouds2sClientTest {
                     }
                 }
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
+        });
+    }
+
+    /**
+     * Test of globalApp service, of Brainclouds2s request.
+     */
+    @Test
+    public void testReadPropertiesString() {
+        System.out.println("testReadProperties");
+        String json = "{\"service\":\"globalApp\",\"operation\":\"READ_PROPERTIES\"}";
+        _s2sClient.request(json, (Brainclouds2s context, String jsonString) -> {
+            if (context != _s2sClient) {
+                fail("wrong context returned");
+            }
+            if (jsonString.length() == 0) {
+                fail("Error returned");
+            }
+            JSONObject jsonData = new JSONObject(jsonString);
+            if (jsonData.has("Status")) {
+                JSONObject Sample = jsonData.getJSONObject("Sample");
+                if (Sample.has("value")) {
+                    if (!"DoNotChangeThisValue".equals(Sample.getString("value"))) {
+                        fail("Unexpected READ_PROPERTIES response " + Sample.toString());
+                    }
+                }
+            }
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -205,7 +241,7 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -235,7 +271,7 @@ public class Brainclouds2sClientTest {
             if (jsonData.getInt("status") != 200) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 
@@ -258,7 +294,7 @@ public class Brainclouds2sClientTest {
             if (200 != jsonData.getInt("status")) {
                 fail("Error returned");
             }
-            System.err.println(jsonData.toString());
+            System.out.println(jsonData.toString());
         });
     }
 }

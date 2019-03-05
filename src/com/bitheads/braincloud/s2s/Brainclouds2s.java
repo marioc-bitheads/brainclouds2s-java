@@ -46,7 +46,7 @@ public class Brainclouds2s implements Runnable {
     private long _heartbeatSeconds = 1800;  // Default to 30 mins
 
     /**
-     * Create a new S2S context
+     * Initialize brainclouds2s context
      *
      * @param appId Application ID
      * @param serverName Server name
@@ -57,7 +57,7 @@ public class Brainclouds2s implements Runnable {
     }
 
     /**
-     * Create a new S2S context
+     * Initialize brainclouds2s context
      *
      * @param appId Application ID
      * @param serverName Server name
@@ -76,8 +76,6 @@ public class Brainclouds2s implements Runnable {
     }
 
     /**
-     * Create a new S2S context
-     *
      * Send an S2S request.
      *
      * @param json S2S operation to be sent as JSON object
@@ -111,6 +109,21 @@ public class Brainclouds2s implements Runnable {
         }
     }
 
+    /**
+     * Send an S2S request.
+     *
+     * @param json S2S operation to be sent as JSON formatted string.
+     * @param callback Callback function
+     */
+    public void request(String json,  IS2SCallBackString callback) {
+        JSONObject jsonObject = new JSONObject(json);
+        
+        request(jsonObject, ((context, jsonData) -> {
+            callback.s2sCallback(context, jsonData.toString());
+        }));
+    }
+    
+
     private void startHeartbeat() {
         stopHeartbeat();
         _heartbeatTimer = scheduler.schedule(this, _heartbeatSeconds, TimeUnit.SECONDS);
@@ -122,6 +135,10 @@ public class Brainclouds2s implements Runnable {
         }
     }
 
+    /**
+     * Current state of the logger.
+     * @return 
+     */
     public boolean getLogEnabled() {
         return _loggingEnabled;
     }
@@ -130,6 +147,10 @@ public class Brainclouds2s implements Runnable {
         return _isInitialized;
     }
 
+    /**
+     * Enable logging of communication with server.
+     * @param isEnabled 
+     */
     public void setLogEnabled(boolean isEnabled) {
         _loggingEnabled = isEnabled;
     }
@@ -362,7 +383,11 @@ public class Brainclouds2s implements Runnable {
         }
     }
 
-    protected void disconnect() {
+    /**
+     * Terminate current session from server.
+     * (New Session will automatically be created on next request)
+     */
+    public void disconnect() {
         stopHeartbeat();
         _sessionId = null;
     }

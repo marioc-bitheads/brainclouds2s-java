@@ -14,3 +14,4 @@ public interface IS2SCallback {
     void s2sCallback(Brainclouds2s context, JSONObject jsonData);
 
 }
+
