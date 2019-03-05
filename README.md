@@ -10,6 +10,18 @@ More detail can be found here: [https://getbraincloud.com/]()
 
 This library provides a simple API for server-to-server communications with brainCloud. 
 
+## Building
+
+clone the repo. 
+
+``` 
+git clone https://github.com/getbraincloud/brainclouds2s-java.git
+cd brainclouds2s-java
+git submodule update --init --recursive --remote
+./autobuild/build.sh
+```
+The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
+
 ## Sample Usage
 
 ### Using included org.json encoding/decoding
