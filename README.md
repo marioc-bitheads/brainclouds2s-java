@@ -12,15 +12,15 @@ This library provides a simple API for server-to-server communications with brai
 
 ## Sample Usage
 
-### Using include org.json encoding/decoding
+### Using included org.json encoding/decoding
 ``` java
         import com.bitheads.braincloud.s2s.Brainclouds2s;
         import org.json.JSONArray;
         import org.json.JSONObject;
 
-        String appId = "<Your app ID>;
-        String serverName = "<Your Server defined name>;;
-        String serverSecret = "<Your server secret>;;
+        String appId = "<Your app ID>";
+        String serverName = "<Your Server defined name>";
+        String serverSecret = "<Your server secret>";
 
         Brainclouds2s instance = new Brainclouds2s();
         instance.init(appId, serverName, serverSecret);
@@ -57,14 +57,14 @@ This library provides a simple API for server-to-server communications with brai
         import org.json.JSONArray;
         import org.json.JSONObject;
 
-        String appId = "<Your app ID>;
-        String serverName = "<Your Server defined name>;;
-        String serverSecret = "<Your server secret>;;
+        String appId = "<Your app ID>";
+        String serverName = "<Your Server defined name>";
+        String serverSecret = "<Your server secret>";
 
         Brainclouds2s instance = new Brainclouds2s();
         instance.init(appId, serverName, serverSecret);
 
-        String requestString ="{\"service\":\"globalEntity", \"operation\":\"READ__LIST\",\"data\":{\"where\":{\"entityType\":\"address\"},\"orderBy\":{\"data.address\":1},\"maxReturn\":50}"
+        String requestString ="{\"service\":\"globalEntity", \"operation\":\"READ__LIST\",\"data\":{\"where\":{\"entityType\":\"address\"},\"orderBy\":{\"data.address\":1},\"maxReturn\":50}";
 
         instance.request(requestString,  (Brainclouds2s context, String jsonString) -> {
             // decode and evaluate jsonString
