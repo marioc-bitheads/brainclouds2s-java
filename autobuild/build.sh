@@ -18,8 +18,10 @@ fi
 echo "Building Brainclouds2s... "
 mkdir -p build
 javac -d ./build `find ./src -name "*.java"`
+cp src/LICENSE build/
+
 echo "Packacking Brainclouds2s-$VERSION.jar..."
 mkdir -p dist
-pushd ./build
-jar -cf ../dist/Brainclouds2s-$VERSION.jar `find . -name "*.class"`
+cd ./build
+jar -cf ../dist/Brainclouds2s-$VERSION.jar `find . -name "*.class"` LICENSE
 echo "Done."
