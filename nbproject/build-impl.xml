@@ -1508,6 +1508,7 @@ is divided into following sections:
             </classpath>
             <fileset dir="${src.dir}" excludes="${bug5101868workaround},${excludes}" includes="${includes}">
                 <filename name="**/*.java"/>
+                <exclude name="JSON-java/**" />
             </fileset>
             <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
                 <include name="**/*.java"/>
