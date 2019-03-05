@@ -387,7 +387,7 @@ public class Brainclouds2s implements Runnable {
      * Terminate current session from server.
      * (New Session will automatically be created on next request)
      */
-    protected void disconnect() {
+    public void disconnect() {
         stopHeartbeat();
         _sessionId = null;
     }
