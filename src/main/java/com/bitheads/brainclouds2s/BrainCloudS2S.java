@@ -1,16 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package com.bitheads.braincloud.s2s;
+package com.bitheads.brainclouds2s;
 
-import com.bitheads.braincloud.client.ReasonCodes;
-import com.bitheads.braincloud.client.StatusCodes;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Date;
@@ -18,18 +12,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/**
- *
- * @author marioc
- */
-public class Brainclouds2s implements Runnable {
+public class BrainCloudS2S implements Runnable {
 
     private static final long NO_PACKET_EXPECTED = -1;
     private static final String DEFAULT_S2S_URL = "https://sharedprod.braincloudservers.com/s2sdispatcher";
+
+    private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
+    private static final int MESSAGE_CONTENT_INVALID_JSON = 40614;
+    private static final int SERVER_SESSION_EXPIRED = 40365;
+    private static final int INVALID_REQUEST = 40001;
+    private static final int BAD_REQUEST = 400;
+    private static final int CLIENT_NETWORK_ERROR = 900;
+
     private String _serverUrl;
     private String _appId;
     private String _serverSecret;
@@ -46,7 +45,7 @@ public class Brainclouds2s implements Runnable {
     private long _heartbeatSeconds = 1800;  // Default to 30 mins
 
     /**
-     * Initialize brainclouds2s context
+     * Initialize BrainCloudS2S context
      *
      * @param appId Application ID
      * @param serverName Server name
@@ -57,7 +56,7 @@ public class Brainclouds2s implements Runnable {
     }
 
     /**
-     * Initialize brainclouds2s context
+     * Initialize BrainCloudS2S context
      *
      * @param appId Application ID
      * @param serverName Server name
@@ -84,7 +83,7 @@ public class Brainclouds2s implements Runnable {
     public void request(JSONObject json, IS2SCallback callback) {
 
         if (!isAuthenticated()) {
-            authenticate((Brainclouds2s context, JSONObject response) -> {
+            authenticate((BrainCloudS2S context, JSONObject response) -> {
                 try {
                     if (response != null && response.getInt("status") == 200) {
                         JSONObject data = response.getJSONObject("data");
@@ -100,7 +99,7 @@ public class Brainclouds2s implements Runnable {
                 } catch (JSONException e) {
                     LogString("Could not authenticate " + e);
                     if (callback != null) {
-                        callback.s2sCallback(context, generateError(StatusCodes.BAD_REQUEST, ReasonCodes.MESSAGE_CONTENT_INVALID_JSON, e.getMessage()));
+                        callback.s2sCallback(context, generateError(BAD_REQUEST, MESSAGE_CONTENT_INVALID_JSON, e.getMessage()));
                     }
                 }
             });
@@ -181,7 +180,7 @@ public class Brainclouds2s implements Runnable {
         JSONObject response = null;
         try {
             JSONArray messageResponses = json.getJSONArray("messageResponses");
-            if (!messageResponses.isEmpty()) {
+            if (messageResponses.length() > 0) {
                 response = messageResponses.getJSONObject(0);
             }
         } catch (Exception e) {
@@ -279,7 +278,7 @@ public class Brainclouds2s implements Runnable {
                 // non-200 status, retry
                 if ((connection.getResponseCode() != HttpURLConnection.HTTP_OK && connection.getResponseCode() != HttpURLConnection.HTTP_FORBIDDEN) || responseBody.length() == 0) {
                     if (callback != null) {
-                        callback.s2sCallback(this, generateError(connection.getResponseCode(), ReasonCodes.CLIENT_NETWORK_ERROR_TIMEOUT, "Network error"));
+                        callback.s2sCallback(this, generateError(connection.getResponseCode(), CLIENT_NETWORK_ERROR_TIMEOUT, "Network error"));
                     }
                     return true;
                 }
@@ -289,7 +288,7 @@ public class Brainclouds2s implements Runnable {
 
                 // check for expired session
                 if (connection.getResponseCode() == HttpURLConnection.HTTP_FORBIDDEN) {
-                    if (jsonResponse.getInt("reason_code") == ReasonCodes.SERVER_SESSION_EXPIRED) {
+                    if (jsonResponse.getInt("reason_code") == SERVER_SESSION_EXPIRED) {
                         _sessionId = null;
                         request(jsonRequest, callback); //re-issue the request to auto login.
                         return true;
@@ -308,24 +307,24 @@ public class Brainclouds2s implements Runnable {
             } catch (java.net.SocketTimeoutException e) {
                 LogString("TIMEOUT t: " + new Date().toString());
                 if (callback != null) {
-                    callback.s2sCallback(this, generateError(StatusCodes.CLIENT_NETWORK_ERROR, ReasonCodes.CLIENT_NETWORK_ERROR_TIMEOUT, "Network error"));
+                    callback.s2sCallback(this, generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR_TIMEOUT, "Network error"));
                 }
                 return true;
             } catch (JSONException e) {
                 LogString("JSON ERROR " + e.getMessage() + " t: " + new Date().toString());
                 if (callback != null) {
-                    callback.s2sCallback(this, generateError(StatusCodes.CLIENT_NETWORK_ERROR, ReasonCodes.INVALID_REQUEST, e.getMessage()));
+                    callback.s2sCallback(this, generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e.getMessage()));
                 }
                 return true;
             } catch (IOException e) {
                 try {
-                    int status_code = (connection != null) ? connection.getResponseCode() : StatusCodes.CLIENT_NETWORK_ERROR;
+                    int status_code = (connection != null) ? connection.getResponseCode() : CLIENT_NETWORK_ERROR;
                     if (callback != null) {
-                        callback.s2sCallback(this, generateError(status_code, ReasonCodes.INVALID_REQUEST, e.getMessage()));
+                        callback.s2sCallback(this, generateError(status_code, INVALID_REQUEST, e.getMessage()));
                     }
                 } catch (IOException e2) {
                     if (callback != null) {
-                        callback.s2sCallback(this, generateError(StatusCodes.CLIENT_NETWORK_ERROR, ReasonCodes.INVALID_REQUEST, e2.getMessage()));
+                        callback.s2sCallback(this, generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e2.getMessage()));
                     }
                 }
             }
