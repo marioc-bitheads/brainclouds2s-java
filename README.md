@@ -1,5 +1,4 @@
 # brainclouds2s-java
-Version 3.11
 
 Java library for brainCloud S2S
 
@@ -16,17 +15,19 @@ clone the repo.
 
 ``` 
 git clone https://github.com/getbraincloud/brainclouds2s-java.git
-cd brainclouds2s-java
-git submodule update --init --recursive --remote
-./autobuild/build.sh
 ```
-The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
+
+Build using maven
+```
+mvn package
+```
+The resulting jar file is in **target/brainclouds2s-x.x.x.jar**
 
 ## Sample Usage
 
 ### Using included org.json encoding/decoding
 ``` java
-        import com.bitheads.braincloud.s2s.Brainclouds2s;
+        import com.bitheads.brainclouds2s.BrainCloudS2S;
         import org.json.JSONArray;
         import org.json.JSONObject;
 
@@ -34,7 +35,7 @@ The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
         String serverName = "<Your Server defined name>";
         String serverSecret = "<Your server secret>";
 
-        Brainclouds2s instance = new Brainclouds2s();
+        BrainCloudS2S instance = new BrainCloudS2S();
         instance.init(appId, serverName, serverSecret);
 
         JSONObject json = new JSONObject();
@@ -53,7 +54,7 @@ The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
         params.put("maxReturn", 5);     // Max 5 entity
         json.put("data",params);
 
-        instance.request(json,  (Brainclouds2s context, JSONObject jsonData) -> {
+        instance.request(json,  (BrainCloudS2S context, JSONObject jsonData) -> {
             if (jsonData.getInt("status").isEqual(200)) {
                 JSONArray list = jsonData.getJSONObject("data").getJSONArray("entityList");
                 // Now list contains the address entities.
@@ -62,7 +63,7 @@ The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
         });
 ```
 
-### Using Your own JSON encoding/deocoding
+### Using Your own JSON encoding/decoding
 
 ``` java
         import com.bitheads.braincloud.s2s.Brainclouds2s;
@@ -73,12 +74,12 @@ The resulting jar file is in **dist/Brainclouds2s-x.x.jar**
         String serverName = "<Your Server defined name>";
         String serverSecret = "<Your server secret>";
 
-        Brainclouds2s instance = new Brainclouds2s();
+        BrainCloudS2S instance = new BrainCloudS2S();
         instance.init(appId, serverName, serverSecret);
 
         String requestString ="{\"service\":\"globalEntity", \"operation\":\"READ__LIST\",\"data\":{\"where\":{\"entityType\":\"address\"},\"orderBy\":{\"data.address\":1},\"maxReturn\":50}";
 
-        instance.request(requestString,  (Brainclouds2s context, String jsonString) -> {
+        instance.request(requestString,  (BrainCloudS2S context, String jsonString) -> {
             // decode and evaluate jsonString
             // Your code here.
         });
