@@ -1,14 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package com.bitheads.braincloud.s2s;
+package com.bitheads.brainclouds2s;
 
-/**
- *
- * @author marioc
- */
 public interface IS2SCallBackString {
     /**
      * The serverCallback() method returns server data back to the layer
@@ -18,5 +9,5 @@ public interface IS2SCallBackString {
      * @param serviceOperation - requested operation
      * @param jsonString - returned data from the server 
      */
-    void s2sCallback(Brainclouds2s context, String jsonString);
+    void s2sCallback(BrainCloudS2S context, String jsonString);
 }
