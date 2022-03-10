@@ -22,7 +22,7 @@ import org.json.JSONObject;
 
 public class BrainCloudS2S implements Runnable {
 
-    public static final String DEFAULT_S2S_URL = "https://sharedprod.braincloudservers.com/s2sdispatcher";
+    public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
 
     private static final long NO_PACKET_EXPECTED = -1;
 
