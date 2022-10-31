@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.bitheads</groupId>
     <artifactId>brainclouds2s</artifactId>
-    <version>4.12.0</version>
+    <version>4.13.0</version>
     <packaging>jar</packaging>
 
     <dependencies>
