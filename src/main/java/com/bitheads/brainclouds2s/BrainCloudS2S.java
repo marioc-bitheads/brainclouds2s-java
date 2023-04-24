@@ -4,13 +4,11 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -24,13 +22,10 @@ public class BrainCloudS2S implements Runnable {
 
     public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
 
-    private static final long NO_PACKET_EXPECTED = -1;
 
     private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
-    private static final int MESSAGE_CONTENT_INVALID_JSON = 40614;
     private static final int SERVER_SESSION_EXPIRED = 40365;
     private static final int INVALID_REQUEST = 40001;
-    private static final int BAD_REQUEST = 400;
     private static final int CLIENT_NETWORK_ERROR = 900;
 
     private static final int STATE_DISCONNECTED = 0;
@@ -49,7 +44,7 @@ public class BrainCloudS2S implements Runnable {
     private String _sessionId = null;
     private long _packetId;
 
-    private ScheduledFuture _heartbeatTimer = null;
+    private ScheduledFuture<?> _heartbeatTimer = null;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private boolean _loggingEnabled = false;
@@ -259,6 +254,15 @@ public class BrainCloudS2S implements Runnable {
             }
         }
     }
+
+
+	public void authenticate(IS2SCallBackString callback) {
+
+		authenticate((IS2SCallback)(context, jsonData) -> {
+			callback.s2sCallback(context, jsonData.toString());
+		});
+	}
+
 
     /*
      * Authenticate with brainCloud. If autoAuth is set to false, which is

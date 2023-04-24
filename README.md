@@ -67,8 +67,6 @@ The resulting jar file is in **target/brainclouds2s-x.x.x.jar**
 
 ``` java
         import com.bitheads.braincloud.s2s.Brainclouds2s;
-        import org.json.JSONArray;
-        import org.json.JSONObject;
 
         String appId = "<Your app ID>";
         String serverName = "<Your Server defined name>";
