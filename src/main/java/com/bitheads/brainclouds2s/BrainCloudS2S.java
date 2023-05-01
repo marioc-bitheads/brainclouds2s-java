@@ -387,9 +387,7 @@ public class BrainCloudS2S implements Runnable {
                 postData = body.getBytes("UTF-8");
                 connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
     
-                if (_loggingEnabled) {
-                    LogString("OUTGOING: " + jsonRequest.toString(2) + ", t: " + new Date().toString());
-                }
+                logRequest(jsonRequest);
     
                 connection.connect();
 
@@ -401,29 +399,24 @@ public class BrainCloudS2S implements Runnable {
                 String responseBody = readResponseBody(connection);
                 synchronized(_lock) {
                     _responseCode = connection.getResponseCode();
-
-                    _jsonResponse = null;
-                    // if (_responseCode == HttpURLConnection.HTTP_OK) {
-                        try {
-                            _jsonResponse = new JSONObject(responseBody);
-                        } catch (JSONException e) {
-                            _jsonResponse = null;
-                        }
-                    // }
+                    _jsonResponse = new JSONObject(responseBody);
                 }
-            } catch (java.net.SocketTimeoutException e) {
+            }
+				catch (java.net.SocketTimeoutException e) {
                 LogString("TIMEOUT t: " + new Date().toString());
                 if (callback != null) {
                     _jsonResponse = generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR_TIMEOUT, "Network error");
                 }
                 return;
-            } catch (JSONException e) {
-                LogString("JSON ERROR " + e.getMessage() + " t: " + new Date().toString());
+            }
+				catch (JSONException e) {
+                LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
                 if (callback != null) {
                     _jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e.getMessage());
                 }
                 return;
-            } catch (IOException e) {
+            }
+				catch (IOException e) {
                 try {
                     int status_code = (connection != null) ? connection.getResponseCode() : CLIENT_NETWORK_ERROR;
                     _jsonResponse = generateError(status_code, INVALID_REQUEST, e.getMessage());
@@ -582,12 +575,7 @@ public class BrainCloudS2S implements Runnable {
 
             if (response != null && request != null) {
 
-                // to avoid taking the json parsing hit even when logging is disabled
-                if (_loggingEnabled) {
-                    try {
-                        LogString("INCOMING (" + responseCode + "): " + response.toString(2) + ", t: " + new Date().toString());
-                    } catch (JSONException e) { }
-                }
+                logResponse(response, responseCode);
 
                 // Start heartbeat 
                 startHeartbeat();
@@ -599,7 +587,7 @@ public class BrainCloudS2S implements Runnable {
                 break; // We got a response, leave.
             }
 
-            if (java.lang.System.currentTimeMillis() - startTime > timeoutMS)
+            if (System.currentTimeMillis() - startTime > timeoutMS)
                 break;
 
             try {
@@ -610,4 +598,34 @@ public class BrainCloudS2S implements Runnable {
             }
         }
     }
+
+
+	private void logRequest(JSONObject jsonRequest) {
+
+		if (_loggingEnabled) {
+			String msg = new StringBuilder("OUTGOING: ")
+					.append(jsonRequest.toString(2))
+					.append(", t: ").append(new Date().toString())
+					.toString();
+			LogString(msg);
+		}
+	}
+
+
+	private void logResponse(JSONObject response, long responseCode) {
+
+		// to avoid taking the json parsing hit even when logging is disabled
+		if (_loggingEnabled) {
+			try {
+				String msg = new StringBuilder("INCOMING (")
+						.append(responseCode).append("): ").append(response.toString(2))
+						.append(", t: ").append(new Date().toString())
+						.toString();
+				LogString(msg);
+			} 
+			catch (JSONException e) {
+				LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
+			}
+		 }
+	}
 }
