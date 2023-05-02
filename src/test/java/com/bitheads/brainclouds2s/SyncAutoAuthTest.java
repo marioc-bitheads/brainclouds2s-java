@@ -2,8 +2,6 @@ package com.bitheads.brainclouds2s;
 
 import static org.junit.Assert.fail;
 
-import java.util.Date;
-
 import org.json.JSONObject;
 import org.junit.Test;
 

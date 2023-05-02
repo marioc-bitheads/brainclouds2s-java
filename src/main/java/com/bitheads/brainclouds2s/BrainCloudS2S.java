@@ -4,13 +4,11 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -24,13 +22,10 @@ public class BrainCloudS2S implements Runnable {
 
     public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
 
-    private static final long NO_PACKET_EXPECTED = -1;
 
     private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
-    private static final int MESSAGE_CONTENT_INVALID_JSON = 40614;
     private static final int SERVER_SESSION_EXPIRED = 40365;
     private static final int INVALID_REQUEST = 40001;
-    private static final int BAD_REQUEST = 400;
     private static final int CLIENT_NETWORK_ERROR = 900;
 
     private static final int STATE_DISCONNECTED = 0;
@@ -49,7 +44,7 @@ public class BrainCloudS2S implements Runnable {
     private String _sessionId = null;
     private long _packetId;
 
-    private ScheduledFuture _heartbeatTimer = null;
+    private ScheduledFuture<?> _heartbeatTimer = null;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private boolean _loggingEnabled = false;
@@ -260,6 +255,15 @@ public class BrainCloudS2S implements Runnable {
         }
     }
 
+
+	public void authenticate(IS2SCallBackString callback) {
+
+		authenticate((IS2SCallback)(context, jsonData) -> {
+			callback.s2sCallback(context, jsonData.toString());
+		});
+	}
+
+
     /*
      * Authenticate with brainCloud. If autoAuth is set to false, which is
      * the default, this must be called successfully before doing other
@@ -383,9 +387,7 @@ public class BrainCloudS2S implements Runnable {
                 postData = body.getBytes("UTF-8");
                 connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
     
-                if (_loggingEnabled) {
-                    LogString("OUTGOING: " + jsonRequest.toString(2) + ", t: " + new Date().toString());
-                }
+                logRequest(jsonRequest);
     
                 connection.connect();
 
@@ -397,29 +399,24 @@ public class BrainCloudS2S implements Runnable {
                 String responseBody = readResponseBody(connection);
                 synchronized(_lock) {
                     _responseCode = connection.getResponseCode();
-
-                    _jsonResponse = null;
-                    // if (_responseCode == HttpURLConnection.HTTP_OK) {
-                        try {
-                            _jsonResponse = new JSONObject(responseBody);
-                        } catch (JSONException e) {
-                            _jsonResponse = null;
-                        }
-                    // }
+                    _jsonResponse = new JSONObject(responseBody);
                 }
-            } catch (java.net.SocketTimeoutException e) {
+            }
+				catch (java.net.SocketTimeoutException e) {
                 LogString("TIMEOUT t: " + new Date().toString());
                 if (callback != null) {
                     _jsonResponse = generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR_TIMEOUT, "Network error");
                 }
                 return;
-            } catch (JSONException e) {
-                LogString("JSON ERROR " + e.getMessage() + " t: " + new Date().toString());
+            }
+				catch (JSONException e) {
+                LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
                 if (callback != null) {
                     _jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e.getMessage());
                 }
                 return;
-            } catch (IOException e) {
+            }
+				catch (IOException e) {
                 try {
                     int status_code = (connection != null) ? connection.getResponseCode() : CLIENT_NETWORK_ERROR;
                     _jsonResponse = generateError(status_code, INVALID_REQUEST, e.getMessage());
@@ -578,12 +575,7 @@ public class BrainCloudS2S implements Runnable {
 
             if (response != null && request != null) {
 
-                // to avoid taking the json parsing hit even when logging is disabled
-                if (_loggingEnabled) {
-                    try {
-                        LogString("INCOMING (" + responseCode + "): " + response.toString(2) + ", t: " + new Date().toString());
-                    } catch (JSONException e) { }
-                }
+                logResponse(response, responseCode);
 
                 // Start heartbeat 
                 startHeartbeat();
@@ -595,7 +587,7 @@ public class BrainCloudS2S implements Runnable {
                 break; // We got a response, leave.
             }
 
-            if (java.lang.System.currentTimeMillis() - startTime > timeoutMS)
+            if (System.currentTimeMillis() - startTime > timeoutMS)
                 break;
 
             try {
@@ -606,4 +598,34 @@ public class BrainCloudS2S implements Runnable {
             }
         }
     }
+
+
+	private void logRequest(JSONObject jsonRequest) {
+
+		if (_loggingEnabled) {
+			String msg = new StringBuilder("OUTGOING: ")
+					.append(jsonRequest.toString(2))
+					.append(", t: ").append(new Date().toString())
+					.toString();
+			LogString(msg);
+		}
+	}
+
+
+	private void logResponse(JSONObject response, long responseCode) {
+
+		// to avoid taking the json parsing hit even when logging is disabled
+		if (_loggingEnabled) {
+			try {
+				String msg = new StringBuilder("INCOMING (")
+						.append(responseCode).append("): ").append(response.toString(2))
+						.append(", t: ").append(new Date().toString())
+						.toString();
+				LogString(msg);
+			} 
+			catch (JSONException e) {
+				LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
+			}
+		 }
+	}
 }

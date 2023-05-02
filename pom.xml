@@ -4,14 +4,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.bitheads</groupId>
     <artifactId>brainclouds2s</artifactId>
-    <version>4.14.0</version>
+    <version>4.14.1</version>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20180130</version>
+            <version>20230227</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
