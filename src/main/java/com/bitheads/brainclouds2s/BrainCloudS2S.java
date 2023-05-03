@@ -20,7 +20,8 @@ import org.json.JSONObject;
 
 public class BrainCloudS2S implements Runnable {
 
-    public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
+
+	public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
 
 
     private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
@@ -31,6 +32,10 @@ public class BrainCloudS2S implements Runnable {
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_AUTHENTICATING = 1;
     private static final int STATE_CONNECTED = 2;
+
+	 private static final String MESSAGES = "messages";
+	 private static final String DATA = "data";
+	 private static final String SERVER_SECRET = "serverSecret";
 
     private boolean _isInitialized = false;
     private int _state = STATE_DISCONNECTED;
@@ -209,7 +214,7 @@ public class BrainCloudS2S implements Runnable {
             messages.put(json);
 
             allMessages = new JSONObject();
-            allMessages.put("messages", messages);
+            allMessages.put(MESSAGES, messages);
         }
         allMessages.put("sessionId", _sessionId);
         allMessages.put("packetId", _packetId);
@@ -277,18 +282,18 @@ public class BrainCloudS2S implements Runnable {
         JSONObject authenticateData = new JSONObject();
         authenticateData.put("appId", _appId);
         authenticateData.put("serverName", _serverName);
-        authenticateData.put("serverSecret", _serverSecret);
+        authenticateData.put(SERVER_SECRET, _serverSecret);
 
         JSONObject authenticateMsg = new JSONObject();
         authenticateMsg.put("service", "authenticationV2");
         authenticateMsg.put("operation", "AUTHENTICATE");
-        authenticateMsg.put("data", authenticateData);
+        authenticateMsg.put(DATA, authenticateData);
 
         JSONArray messages = new JSONArray();
         messages.put(authenticateMsg);
 
         JSONObject allMessages = new JSONObject();
-        allMessages.put("messages", messages);
+        allMessages.put(MESSAGES, messages);
         _packetId = 0;
         allMessages.put("packetId", _packetId);
 
@@ -300,7 +305,7 @@ public class BrainCloudS2S implements Runnable {
 
                     if (message.getInt("status") == 200) {
                         
-                        JSONObject data = message.getJSONObject("data");
+                        JSONObject data = message.getJSONObject(DATA);
 
                         _state = STATE_CONNECTED;
                         _packetId = rawResponse.getLong("packetId") + 1;
@@ -379,15 +384,23 @@ public class BrainCloudS2S implements Runnable {
                 connection.setDoOutput(true);
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
-    
-                String body = jsonRequest.toString() + "\r\n\r\n";
-    
                 connection.setRequestProperty("charset", "utf-8");
-                byte[] postData;
-                postData = body.getBytes("UTF-8");
-                connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
     
-                logRequest(jsonRequest);
+                String body = new StringBuilder().append(jsonRequest.toString()).append("\r\n\r\n").toString();
+                byte[] postData = body.getBytes("UTF-8");
+                connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
+
+					// Don't log the app secret if this is an authentication
+					if (_state == STATE_AUTHENTICATING) {
+						JSONArray messages = jsonRequest.getJSONArray(MESSAGES);
+						JSONObject authMessage = messages.getJSONObject(0);
+						JSONObject authData = authMessage.getJSONObject(DATA);
+						String serverSecret = authData.getString(SERVER_SECRET);
+						if (serverSecret != null && serverSecret.length() > 5) {
+							authData.put(SERVER_SECRET, new StringBuilder().append(serverSecret.substring(0, 6)).append("******").toString());
+						}
+					}
+					logRequest(jsonRequest);
     
                 connection.connect();
 
@@ -600,11 +613,11 @@ public class BrainCloudS2S implements Runnable {
     }
 
 
-	private void logRequest(JSONObject jsonRequest) {
+	private void logRequest(JSONObject request) {
 
 		if (_loggingEnabled) {
 			String msg = new StringBuilder("OUTGOING: ")
-					.append(jsonRequest.toString(2))
+					.append(request.toString(2))
 					.append(", t: ").append(new Date().toString())
 					.toString();
 			LogString(msg);
