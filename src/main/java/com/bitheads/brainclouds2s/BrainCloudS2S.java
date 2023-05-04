@@ -186,7 +186,7 @@ public class BrainCloudS2S implements Runnable {
 
     /**
      * Current state of the logger.
-     * @return 
+     * @return True if log messages are to be printed to the console
      */
     public boolean getLogEnabled() {
         return _loggingEnabled;
@@ -197,7 +197,7 @@ public class BrainCloudS2S implements Runnable {
     }
 
     /*
-     * Set wether S2S messages and errors are logged to the console
+     * Set whether S2S messages and errors are logged to the console
      * @param isEnabled Will log if true. Default false
      */
     public void setLogEnabled(boolean isEnabled) {
@@ -311,7 +311,7 @@ public class BrainCloudS2S implements Runnable {
                         _packetId = rawResponse.getLong("packetId") + 1;
                         _sessionId = data.getString("sessionId");
 
-                        // Start heatbeat
+                        // Start heart beat
                         if (data.has("heartbeatSeconds")) {
                             _heartbeatSeconds = data.getLong("heartbeatSeconds");
                         }
