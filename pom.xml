@@ -102,4 +102,23 @@
 			</plugin>
 		</plugins>
 	</build>
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
+	<scm>
+		<connection>scm:git:git://github.com/getbraincloud/brainclouds2s-java</connection>
+		<developerConnection>scm:git:ssh://github.com/getbraincloud/brainclouds2s-java</developerConnection>
+		<url>https://github.com/getbraincloud/brainclouds2s-java</url>
+	</scm>
+	<developers>
+		<developer>
+			<name>brainCloud Client Team</name>
+			<email>bc-client-team@bitheads.com</email>
+			<organization>bitHeads, inc.</organization>
+			<organizationUrl>https://www.bitheads.com/</organizationUrl>
+		</developer>
+	</developers>
 </project>
