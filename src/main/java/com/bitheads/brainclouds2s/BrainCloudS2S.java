@@ -425,7 +425,13 @@ public class BrainCloudS2S implements Runnable {
 			synchronized(_lock) {
 				try {
 					_responseCode = connection.getResponseCode();
-					_jsonResponse = new JSONObject(responseBody);
+					if (_responseCode == HttpURLConnection.HTTP_OK) {
+						_jsonResponse = new JSONObject(responseBody);
+					}
+					else {
+						logString("ERROR making request [status:" + _responseCode + "]");
+						_jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, responseBody);
+					}
 				}
 				catch (IOException e) {
 					logException("ERROR reading response code", e);
