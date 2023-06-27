@@ -5,7 +5,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -24,18 +27,18 @@ public class BrainCloudS2S implements Runnable {
 	public static final String DEFAULT_S2S_URL = "https://api.braincloudservers.com/s2sdispatcher";
 
 
-    private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
+	private static final int CLIENT_NETWORK_ERROR = 900;
+	private static final int CLIENT_NETWORK_ERROR_TIMEOUT = 90001;
     private static final int SERVER_SESSION_EXPIRED = 40365;
-    private static final int INVALID_REQUEST = 40001;
-    private static final int CLIENT_NETWORK_ERROR = 900;
+    private static final int INVALID_RESPONSE = 40002;
 
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_AUTHENTICATING = 1;
     private static final int STATE_CONNECTED = 2;
 
-	 private static final String MESSAGES = "messages";
-	 private static final String DATA = "data";
-	 private static final String SERVER_SECRET = "serverSecret";
+	private static final String MESSAGES = "messages";
+	private static final String DATA = "data";
+	private static final String SERVER_SECRET = "serverSecret";
 
     private boolean _isInitialized = false;
     private int _state = STATE_DISCONNECTED;
@@ -230,7 +233,7 @@ public class BrainCloudS2S implements Runnable {
                 response = messageResponses.getJSONObject(0);
             }
         } catch (Exception e) {
-            LogString("Error decoding response " + e);
+            logException("Error decoding response", e);
             response = json;
         }
         return response;
@@ -244,7 +247,7 @@ public class BrainCloudS2S implements Runnable {
             jsonError.put("severity", "ERROR");
             jsonError.put("status_message", statusMessage);
         } catch (JSONException je) {
-            LogString("Error encoding error " + je.getMessage());
+            logException("Error encoding error", je);
         }
         return jsonError;
     }
@@ -254,9 +257,7 @@ public class BrainCloudS2S implements Runnable {
         _requestQueue.clear();
         for (int i = 0; i < queue.size(); i++) {
             Request request = queue.get(i);
-            if (request.getCallback() != null) {
-                request.getCallback().s2sCallback(this, message);
-            }
+				callCallback(request.getCallback(), this, message);
         }
     }
 
@@ -264,7 +265,7 @@ public class BrainCloudS2S implements Runnable {
 	public void authenticate(IS2SCallBackString callback) {
 
 		authenticate((IS2SCallback)(context, jsonData) -> {
-			callback.s2sCallback(context, jsonData.toString());
+			callCallback(callback, context, jsonData.toString());
 		});
 	}
 
@@ -321,24 +322,18 @@ public class BrainCloudS2S implements Runnable {
                         _state = STATE_DISCONNECTED;
                     }
 
-                    if (callback != null) {
-                        callback.s2sCallback(context, message);
-                    }
+						  callCallback(callback, context, message);
                 } else {
                     failAllRequests(null);
                     disconnect();
 
-                    if (callback != null) {
-                        callback.s2sCallback(context, null);
-                    }
+						  callCallback(callback, context, null);
                 }
             } catch (JSONException e) {
                 failAllRequests(null);
                 disconnect();
 
-                if (callback != null) {
-                    callback.s2sCallback(context, null);
-                }
+					 callCallback(callback, context, null);
             }
         });
     }
@@ -364,128 +359,141 @@ public class BrainCloudS2S implements Runnable {
         });
     }
 
-    // Raw http request, we don't extract the messageReponses from this, and we
-    // don't wrap in the session id and packet id. This is just raw send/recv
-    private void sendRawRequest(JSONObject jsonRequest, IS2SCallback callback) {
+	// Raw http request, we don't extract the messageReponses from this, and we
+	// don't wrap in the session id and packet id. This is just raw send/recv
+	private void sendRawRequest(JSONObject jsonRequest, IS2SCallback callback) {
 
-        synchronized(_lock) {
-            _currentRequest = new Request(jsonRequest, callback);
-            _jsonResponse = null;
-        }
+		synchronized(_lock) {
+			_currentRequest = new Request(jsonRequest, callback);
+			_jsonResponse = null;
+		}
 
-        stopHeartbeat(); // Will restart after request is done
+		stopHeartbeat(); // Will restart after request is done
 
-        _requestThread = new Thread(() -> {
+		_requestThread = new Thread(() -> {
 
-            HttpURLConnection connection = null;
+			HttpURLConnection connection = null;
 
-            try {
-                connection = (HttpURLConnection) new URL(_serverUrl).openConnection();
-                connection.setDoOutput(true);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/json");
-                connection.setRequestProperty("charset", "utf-8");
-    
-                String body = new StringBuilder().append(jsonRequest.toString()).append("\r\n\r\n").toString();
-                byte[] postData = body.getBytes("UTF-8");
-                connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
+			try {
+				connection = (HttpURLConnection) new URL(_serverUrl).openConnection();
+				connection.setDoOutput(true);
+				connection.setRequestMethod("POST");
+				connection.setRequestProperty("Content-Type", "application/json");
+				connection.setRequestProperty("charset", "utf-8");
 
-					// Don't log the app secret if this is an authentication
-					if (_state == STATE_AUTHENTICATING) {
-						JSONArray messages = jsonRequest.getJSONArray(MESSAGES);
-						JSONObject authMessage = messages.getJSONObject(0);
-						JSONObject authData = authMessage.getJSONObject(DATA);
-						String serverSecret = authData.getString(SERVER_SECRET);
-						if (serverSecret != null && serverSecret.length() > 5) {
-							authData.put(SERVER_SECRET, new StringBuilder().append(serverSecret.substring(0, 6)).append("******").toString());
-						}
+				String body = new StringBuilder().append(jsonRequest.toString()).append("\r\n\r\n").toString();
+				byte[] postData = body.getBytes("UTF-8");
+				connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
+
+				// Don't log the app secret if this is an authentication
+				// (NOTE that we're modifying the original request but that's ok because the body content has already been read ^^)
+				if (_state == STATE_AUTHENTICATING) {
+					JSONArray messages = jsonRequest.getJSONArray(MESSAGES);
+					JSONObject authMessage = messages.getJSONObject(0);
+					JSONObject authData = authMessage.getJSONObject(DATA);
+					String serverSecret = authData.getString(SERVER_SECRET);
+					if (serverSecret != null && serverSecret.length() > 5) {
+						authData.put(SERVER_SECRET, new StringBuilder().append(serverSecret.substring(0, 6)).append("******").toString());
 					}
-					logRequest(jsonRequest);
-    
-                connection.connect();
+				}
+				logRequest(jsonRequest);
 
-                try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
-                    wr.write(postData);
-                }
+				connection.connect();
 
-                // Get server response
-                String responseBody = readResponseBody(connection);
-                synchronized(_lock) {
-                    _responseCode = connection.getResponseCode();
-                    _jsonResponse = new JSONObject(responseBody);
-                }
-            }
-				catch (java.net.SocketTimeoutException e) {
-                LogString("TIMEOUT t: " + new Date().toString());
-                if (callback != null) {
-                    _jsonResponse = generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR_TIMEOUT, "Network error");
-                }
-                return;
-            }
-				catch (JSONException e) {
-                LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
-                if (callback != null) {
-                    _jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e.getMessage());
-                }
-                return;
-            }
+				try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
+					wr.write(postData);
+				}
+			}
+			catch (SocketTimeoutException e) {
+				logException("TIMEOUT sending request", e);
+				synchronized(_lock) {
+					_jsonResponse = generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR_TIMEOUT, "Network timeout error");
+				}
+				return;
+			}
+			catch (IOException e) {
+				logException("ERROR sending request", e);
+				synchronized(_lock) {
+					_jsonResponse = generateError(CLIENT_NETWORK_ERROR, CLIENT_NETWORK_ERROR, "Network error");
+				}
+				return;
+			}
+
+			String responseBody = readResponseBody(connection);
+
+			// Get server response
+			synchronized(_lock) {
+				try {
+					_responseCode = connection.getResponseCode();
+					if (_responseCode == HttpURLConnection.HTTP_OK) {
+						_jsonResponse = new JSONObject(responseBody);
+					}
+					else {
+						logString("ERROR making request [status:" + _responseCode + "]");
+						_jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, responseBody);
+					}
+				}
 				catch (IOException e) {
-                try {
-                    int status_code = (connection != null) ? connection.getResponseCode() : CLIENT_NETWORK_ERROR;
-                    _jsonResponse = generateError(status_code, INVALID_REQUEST, e.getMessage());
-                } catch (IOException e2) {
-                    _jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e2.getMessage());
-                }
-            }
-        });
+					logException("ERROR reading response code", e);
+					_jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, e.getMessage());
+				}
+				catch (JSONException e) {
+					logException("ERROR parsing response json [body:" + responseBody + "]", e);
+					_jsonResponse = generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, e.getMessage());
+				}
+			}
+	});
 
-        _requestThread.start();
-    }
+		_requestThread.start();
+	}
 
-    private void sendRequest(JSONObject jsonRequest, IS2SCallback callback) {
+	private void sendRequest(JSONObject jsonRequest, IS2SCallback callback) {
 
-        sendRawRequest(createPacket(jsonRequest), (BrainCloudS2S context, JSONObject response) -> {
-            _packetId++;
-            
-            try {
-                JSONObject jsonResponse = null;
-                if (response != null) {
-                    jsonResponse = extractResponseAt(0, response);
-                }
+		sendRawRequest(createPacket(jsonRequest), (BrainCloudS2S context, JSONObject response) -> {
 
-                // check for expired session
-                if (jsonResponse != null && jsonResponse.getInt("status") != 200 && 
-                    jsonResponse.getInt("reason_code") == SERVER_SESSION_EXPIRED && _retryCount < 3) {
+			_packetId++;
 
-                    _retryCount++;
-                    _packetId = 0;
-                    _sessionId = null;
-                    reAuth();
-                    return;
-                }
+			JSONObject jsonResponse = null;
+			if (response != null) {
+				jsonResponse = extractResponseAt(0, response);
+			}
 
-                if (_requestQueue.size() > 0) {
-                    _requestQueue.remove(0); // Remove this request
-                }
-                _retryCount = 0;
+			try {
+				// check for expired session
+				if (jsonResponse != null && jsonResponse.getInt("status") != 200 && 
+					jsonResponse.getInt("reason_code") == SERVER_SESSION_EXPIRED && _retryCount < 3) {
 
-                if (callback != null) {
-                    callback.s2sCallback(this, jsonResponse);
-                }
+					_retryCount++;
+					_packetId = 0;
+					_sessionId = null;
+					reAuth();
+					return;
+				}
 
-                // Do next request in queue
-                if (/*_state == STATE_CONNECTED && */_requestQueue.size() > 0) {
-                    Request nextRequest = _requestQueue.get(0);
-                    sendRequest(nextRequest.getJson(), nextRequest.getCallback());
-                }
-            } catch (JSONException e) {
-                LogString("JSON ERROR " + e.getMessage() + " t: " + new Date().toString());
-                if (callback != null) {
-                    callback.s2sCallback(this, generateError(CLIENT_NETWORK_ERROR, INVALID_REQUEST, e.getMessage()));
-                }
-            }
-        });
-    }
+				if (_requestQueue.size() > 0) {
+					_requestQueue.remove(0); // Remove this request
+				}
+				_retryCount = 0;
+
+				callCallback(callback, this, jsonResponse);
+			}
+			catch (JSONException jse) {
+				logException("JSON ERROR in response", jse);
+				callCallback(callback, this, generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, jse.getMessage()));
+			}
+			catch (Exception e) {
+				logException("ERROR processing response", e);
+				callCallback(callback, this, generateError(CLIENT_NETWORK_ERROR, INVALID_RESPONSE, e.getMessage()));
+			}
+
+			// Do next request in queue
+			if (/*_state == STATE_CONNECTED && */_requestQueue.size() > 0) {
+				Request nextRequest = _requestQueue.get(0);
+				sendRequest(nextRequest.getJson(), nextRequest.getCallback());
+			}
+		});
+	}
+
 
     private String readResponseBody(HttpURLConnection connection) {
         String responseBody = "";
@@ -520,14 +528,43 @@ public class BrainCloudS2S implements Runnable {
         return responseBody;
     }
 
-    private void LogString(String s) {
-        if (_loggingEnabled) {
-            // for now use System.out as unit tests do not support android.util.log class
-            System.out.println("#BCC " + s);
-        }
-    }
 
-    @Override
+	private void logString(String s) {
+		logString(s, Instant.now());
+	}
+
+
+	private void logException(String msg, Exception e) {
+
+		String buf = new StringBuilder()
+				.append(msg)
+				.append(" [e:")
+				.append(e.getClass().getSimpleName())
+				.append(" m:")
+				.append(e.getMessage())
+				.append(']')
+				.toString();
+
+		logString(buf, Instant.now());
+	}
+
+
+	private void logString(String s, Instant timestamp) {
+
+		if (_loggingEnabled) {
+			 // for now use System.out as unit tests do not support android.util.log class
+			 String log = new StringBuilder("#BCC ")
+					 .append(DateTimeFormatter.ISO_INSTANT.format(timestamp))
+					 .append(' ')
+					 .append(s)
+					 .toString();
+
+			 System.out.println(log);
+		}
+	}
+
+
+  @Override
     public void run() {
         if (_sessionId != null) {
             JSONObject heartbeatMsg = new JSONObject();
@@ -593,9 +630,7 @@ public class BrainCloudS2S implements Runnable {
                 // Start heartbeat 
                 startHeartbeat();
 
-                if (request.getCallback() != null) {
-                    request.getCallback().s2sCallback(this, response);
-                }
+					 callCallback(request.getCallback(), this, response);
 
                 break; // We got a response, leave.
             }
@@ -613,14 +648,39 @@ public class BrainCloudS2S implements Runnable {
     }
 
 
+	private void callCallback(IS2SCallback callback, BrainCloudS2S context, JSONObject json) {
+
+		if (callback != null) {
+			try {
+				callback.s2sCallback(this, json);
+			}
+			catch (Exception e) {
+				logException("WARN error in callback", e);
+			}
+		}
+	}
+
+
+	private void callCallback(IS2SCallBackString callback, BrainCloudS2S context, String message) {
+
+		if (callback != null) {
+			try {
+				callback.s2sCallback(this, message);
+			}
+			catch (Exception e) {
+				logException("WARN error in callback", e);
+			}
+		}
+	}
+
+
 	private void logRequest(JSONObject request) {
 
 		if (_loggingEnabled) {
 			String msg = new StringBuilder("OUTGOING: ")
 					.append(request.toString(2))
-					.append(", t: ").append(new Date().toString())
 					.toString();
-			LogString(msg);
+			logString(msg);
 		}
 	}
 
@@ -632,12 +692,11 @@ public class BrainCloudS2S implements Runnable {
 			try {
 				String msg = new StringBuilder("INCOMING (")
 						.append(responseCode).append("): ").append(response.toString(2))
-						.append(", t: ").append(new Date().toString())
 						.toString();
-				LogString(msg);
+				logString(msg);
 			} 
 			catch (JSONException e) {
-				LogString("JSON ERROR parsing response: " + e.getMessage() + " t: " + new Date().toString());
+				logException("JSON ERROR parsing response", e);
 			}
 		 }
 	}
