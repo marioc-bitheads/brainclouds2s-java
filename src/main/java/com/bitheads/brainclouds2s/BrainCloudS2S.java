@@ -425,7 +425,7 @@ public class BrainCloudS2S implements Runnable {
 			synchronized(_lock) {
 				try {
 					_responseCode = connection.getResponseCode();
-					if (_responseCode == HttpURLConnection.HTTP_OK) {
+					if (_responseCode == HttpURLConnection.HTTP_OK || _responseCode == HttpURLConnection.HTTP_FORBIDDEN) {
 						_jsonResponse = new JSONObject(responseBody);
 					}
 					else {
