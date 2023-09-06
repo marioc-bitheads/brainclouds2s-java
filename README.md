@@ -16,7 +16,7 @@ Starting with version 4.14.1, all releases are now available on Maven Central. A
 <dependency>
 	<groupId>com.bitheads</groupId>
 	<artifactId>brainclouds2s</artifactId>
-	<version>4.15.1</version>
+	<version>x.x.x</version>
 </dependency>
 ```
 
