@@ -13,3 +13,6 @@ buildNumber.properties
 ids.txt
 build/
 dist/
+.classpath
+.project
+*.prefs
