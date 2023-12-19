@@ -65,6 +65,8 @@ public class BrainCloudS2S implements Runnable {
     private long _responseCode = 0;
     private Thread _requestThread = null;
     private Object _lock = new Object();
+    
+    private RTTComms _rttComms;
 
     /**
      * Initialize BrainCloudS2S context
@@ -95,6 +97,10 @@ public class BrainCloudS2S implements Runnable {
         _autoAuth = autoAuth;
         _retryCount = 0;
         _requestQueue.clear();
+        
+        if(_rttComms == null) {
+        	_rttComms = new RTTComms();
+        }
     }
 
     /**
@@ -104,9 +110,8 @@ public class BrainCloudS2S implements Runnable {
      * @param callback Callback function
      */
     public void request(JSONObject json, IS2SCallback callback) {
-
         if (_state == STATE_DISCONNECTED && _autoAuth) {
-            authenticate((BrainCloudS2S context, JSONObject response) -> {
+        	authenticate((BrainCloudS2S context, JSONObject response) -> {
                 if (_state == STATE_CONNECTED && response != null && response.getInt("status") == 200) {
                     if (_requestQueue.size() > 0) {
                         Request nextRequest = _requestQueue.get(0);
@@ -194,6 +199,14 @@ public class BrainCloudS2S implements Runnable {
     public boolean getLogEnabled() {
         return _loggingEnabled;
     }
+    
+    public String getAppId() {
+    	return _appId;
+    }
+    
+    public String getSessionId() {
+    	return _sessionId;
+    }
 
     public boolean isIsInitialized() {
         return _isInitialized;
@@ -263,7 +276,6 @@ public class BrainCloudS2S implements Runnable {
 
 
 	public void authenticate(IS2SCallBackString callback) {
-
 		authenticate((IS2SCallback)(context, jsonData) -> {
 			callCallback(callback, context, jsonData.toString());
 		});
@@ -277,7 +289,6 @@ public class BrainCloudS2S implements Runnable {
      * @param callback Callback function
      */
     public void authenticate(IS2SCallback callback) {
-
         _state = STATE_AUTHENTICATING;
 
         JSONObject authenticateData = new JSONObject();
@@ -339,7 +350,7 @@ public class BrainCloudS2S implements Runnable {
     }
 
     private void queueRequest(JSONObject jsonRequest, IS2SCallback callback) {
-        _requestQueue.add(new Request(jsonRequest, callback));
+    	_requestQueue.add(new Request(jsonRequest, callback));
 
         // If only 1 in the queue, then send the request immediately
         // Also make sure we're not in the process of authenticating
@@ -362,7 +373,6 @@ public class BrainCloudS2S implements Runnable {
 	// Raw http request, we don't extract the messageReponses from this, and we
 	// don't wrap in the session id and packet id. This is just raw send/recv
 	private void sendRawRequest(JSONObject jsonRequest, IS2SCallback callback) {
-
 		synchronized(_lock) {
 			_currentRequest = new Request(jsonRequest, callback);
 			_jsonResponse = null;
@@ -443,14 +453,11 @@ public class BrainCloudS2S implements Runnable {
 				}
 			}
 	});
-
 		_requestThread.start();
 	}
 
 	private void sendRequest(JSONObject jsonRequest, IS2SCallback callback) {
-
 		sendRawRequest(createPacket(jsonRequest), (BrainCloudS2S context, JSONObject response) -> {
-
 			_packetId++;
 
 			JSONObject jsonResponse = null;
@@ -587,12 +594,34 @@ public class BrainCloudS2S implements Runnable {
         _sessionId = null;
         _requestQueue.clear();
     }
+    
+    public void enableRTT(IRTTConnectCallback connectCallback) {
+    	_rttComms.enableRTT(this, connectCallback);
+    }
+    
+    public void disableRTT() {
+    	_rttComms.disableRTT();
+    }
+    
+    public boolean getRTTEnabled() {
+    	return _rttComms.rttIsEnabled();
+    }
+    
+    public void registerRTTRawCallback(IRTTCallback rttRawCallback) {
+    	_rttComms.registerRTTRawCallback(rttRawCallback);
+    }
+    
+    public void deregisterRTTRawCallback() {
+    	_rttComms.deregisterRTTRawCallback();
+    }
 
     /*
      * Update requests and perform callbacks on the calling thread.
      */
     public void runCallbacks() {
         runCallbacks(0);
+        
+        _rttComms.runCallbacks();
     }
 
     /*
