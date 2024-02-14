@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.bitheads</groupId>
 	<artifactId>brainclouds2s</artifactId>
-	<version>5.1.0</version>
+	<version>5.2.0</version>
 	<packaging>jar</packaging>
 	<name>brainCloud S2S Java</name>
 	<description>The Java library for brainCloud S2S</description>
@@ -19,6 +19,11 @@
 			<artifactId>junit</artifactId>
 			<version>4.13.2</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.java-websocket</groupId>
+			<artifactId>Java-WebSocket</artifactId>
+			<version>1.5.3</version>
 		</dependency>
 	</dependencies>
 	<properties>
@@ -63,8 +68,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.2.1</version>
-				<configuration>
-				</configuration>
+				<configuration></configuration>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
